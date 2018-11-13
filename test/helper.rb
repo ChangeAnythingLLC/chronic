@@ -3,9 +3,12 @@ unless defined? Chronic
   require 'chronic'
 end
 
+require 'active_support/testing/time_helpers'
 require 'minitest/autorun'
 
 class TestCase < MiniTest::Test
+  include ActiveSupport::Testing::TimeHelpers
+
   def self.test(name, &block)
     define_method("test_#{name.gsub(/\W/, '_')}", &block) if block
   end
