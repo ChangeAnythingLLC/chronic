@@ -15,9 +15,9 @@ module Chronic
       end
 
       direction = pointer == :future ? 1 : -1
-      @current_day_start += direction * DAY_SECONDS
+      @current_day_start = shift_day(@current_day_start, direction)
 
-      Span.new(@current_day_start, @current_day_start + DAY_SECONDS)
+      Span.new(@current_day_start, shift_day(@current_day_start))
     end
 
     def this(pointer = :future)
@@ -49,6 +49,15 @@ module Chronic
 
     def to_s
       super << '-day'
+    end
+
+    private
+
+    def shift_day(date, direction = +1)
+      initial_utc_offset = date.utc_offset
+      new_date = date + direction * DAY_SECONDS
+      dst_time_shift = initial_utc_offset - new_date.utc_offset
+      new_date + dst_time_shift
     end
   end
 end
