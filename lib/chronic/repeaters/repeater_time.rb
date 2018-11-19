@@ -23,8 +23,10 @@ module Chronic
       def to_s
         @time.to_s + (@ambiguous ? '?' : '')
       end
-
     end
+
+    HALF_DAY = 60 * 60 * 12
+    FULL_DAY = 60 * 60 * 24
 
     def initialize(time, width = nil, options = {})
       @current_time = nil
@@ -68,40 +70,44 @@ module Chronic
     #             must be either :past or :future
     def next(pointer)
       super
-
-      half_day = 60 * 60 * 12
-      full_day = 60 * 60 * 24
-
       first = false
 
       unless @current_time
         first = true
         midnight = Chronic.time_class.local(@now.year, @now.month, @now.day)
 
-        yesterday_midnight = midnight - full_day
-        tomorrow_midnight = midnight + full_day
-
-        offset_fix = midnight.gmt_offset - tomorrow_midnight.gmt_offset
-        tomorrow_midnight += offset_fix
-
         catch :done do
-          if pointer == :future
-            if @type.ambiguous?
-              [midnight + @type.time + offset_fix, midnight + half_day + @type.time + offset_fix, tomorrow_midnight + @type.time].each do |t|
+          if @type.ambiguous?
+            if pointer == :future
+              [
+                concat_time(midnight, @type.time),
+                concat_time(midnight, HALF_DAY, @type.time),
+                concat_time(midnight, FULL_DAY, @type.time)
+              ].each do |t|
                 (@current_time = t; throw :done) if t >= @now
               end
             else
-              [midnight + @type.time + offset_fix, tomorrow_midnight + @type.time].each do |t|
-                (@current_time = t; throw :done) if t >= @now
-              end
-            end
-          else # pointer == :past
-            if @type.ambiguous?
-              [midnight + half_day + @type.time + offset_fix, midnight + @type.time + offset_fix, yesterday_midnight + @type.time + half_day].each do |t|
+              [
+                concat_time(midnight, HALF_DAY, @type.time),
+                concat_time(midnight, @type.time),
+                concat_time(midnight, -HALF_DAY, @type.time),
+              ].each do |t|
                 (@current_time = t; throw :done) if t <= @now
               end
+            end
+          else
+            if pointer == :future
+              [
+                concat_time(midnight, @type.time),
+                concat_time(midnight, FULL_DAY, @type.time)
+              ].each do |t|
+                (@current_time = t; throw :done) if t >= @now
+              end
             else
-              [midnight + @type.time + offset_fix, yesterday_midnight + @type.time].each do |t|
+              [
+                concat_time(midnight, @type.time),
+                concat_time(midnight, -FULL_DAY, @type.time)
+              ].each do |t|
                 (@current_time = t; throw :done) if t <= @now
               end
             end
@@ -112,7 +118,7 @@ module Chronic
       end
 
       unless first
-        increment = @type.ambiguous? ? half_day : full_day
+        increment = @type.ambiguous? ? HALF_DAY : FULL_DAY
         @current_time += pointer == :future ? increment : -increment
       end
 
@@ -133,6 +139,15 @@ module Chronic
 
     def to_s
       super << '-time-' << @type.to_s
+    end
+
+    private
+
+    def concat_time(*items)
+      initial_time_offset = items.first.gmt_offset
+      new_time = items.inject(&:+)
+      dst_time_shift = initial_time_offset - new_time.gmt_offset
+      new_time + dst_time_shift
     end
   end
 end
