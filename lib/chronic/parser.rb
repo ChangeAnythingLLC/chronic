@@ -58,6 +58,7 @@ module Chronic
       validate_options!(options)
       @options = DEFAULT_OPTIONS.merge(options)
       @now = options[:now] || Chronic.time_class.now
+      @need_to_check_dst = false
     end
 
     # Parse "text" with the given options
@@ -68,7 +69,10 @@ module Chronic
 
       puts "+#{'-' * 51}\n| #{tokens}\n+#{'-' * 51}" if Chronic.debug
 
-      guess(span, options[:guess]) if span
+      result = guess(span, options[:guess]) if span
+      return result if result.is_a?(Chronic::Span)
+      return result unless @need_to_check_dst && result.utc_offset != now.utc_offset
+      adjust_utc_offset_for_dst_change(result)
     end
 
     # Clean up the specified text ready for parsing.
@@ -187,6 +191,7 @@ module Chronic
 
     def tokens_to_span(tokens, options)
       definitions = definitions(options)
+      @need_to_check_dst = false
 
       (definitions[:endian] + definitions[:date]).each do |handler|
         if handler.match(tokens, definitions)
@@ -205,6 +210,9 @@ module Chronic
       definitions[:arrow].each do |handler|
         if handler.match(tokens, definitions)
           good_tokens = tokens.reject { |o| o.get_tag(SeparatorAt) || o.get_tag(SeparatorSlash) || o.get_tag(SeparatorDash) || o.get_tag(SeparatorComma) || o.get_tag(SeparatorAnd) }
+          if %i[handle_s_r_p handle_s_r_p_a].include?(handler.handler_method)
+            @need_to_check_dst = good_tokens[1]&.tags&.first&.type != :month
+          end
           return handler.invoke(:arrow, good_tokens, self, options)
         end
       end
@@ -217,6 +225,10 @@ module Chronic
 
       puts '-none' if Chronic.debug
       return nil
+    end
+
+    def adjust_utc_offset_for_dst_change(time)
+      time + (now.utc_offset - time.utc_offset)
     end
   end
 end
