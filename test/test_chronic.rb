@@ -200,4 +200,79 @@ class TestChronic < TestCase
     end
 =end
   end
+
+  def test_parse_relative_on_dst_to_winter_time_change_in_future
+    time_zone = ActiveSupport::TimeZone['America/Chicago']
+    travel_to time_zone.parse('2020-10-30 10:00:00') do
+      old_time_class = Chronic.time_class
+      old_time_zone = ::Time.zone
+      begin
+        ::Time.zone = 'America/Chicago'
+        Chronic.time_class = ::Time.zone
+        assert_equal Time.new(2020, 11, 1, 17, 0, 0, '-06:00'), Chronic.parse('2 days from now at 17:00')
+        assert_equal Time.new(2020, 11, 1, 10, 0, 0, '-06:00'), Chronic.parse('2 days from now')
+        assert_equal Time.new(2020, 11, 30, 10, 0, 0, '-06:00'), Chronic.parse('1 month from now')
+        assert_equal Time.new(2020, 11, 6, 12, 0, 0, '-06:00'), Chronic.parse('1 week from now at noon')
+      ensure
+        Chronic.time_class = old_time_class
+        ::Time.zone = old_time_zone
+      end
+    end
+  end
+
+  def test_parse_relative_on_dst_to_winter_time_change_in_past
+    time_zone = ActiveSupport::TimeZone['America/Chicago']
+    travel_to time_zone.parse('2020-11-01 10:00:00') do
+      old_time_class = Chronic.time_class
+      old_time_zone = ::Time.zone
+      begin
+        ::Time.zone = 'America/Chicago'
+        Chronic.time_class = ::Time.zone
+        assert_equal Time.new(2020, 10, 30, 17, 0, 0, '-05:00'), Chronic.parse('2 days ago at 17:00')
+        assert_equal Time.new(2020, 10, 30, 10, 0, 0, '-05:00'), Chronic.parse('2 days ago')
+        assert_equal Time.new(2020, 10, 25, 12, 0, 0, '-05:00'), Chronic.parse('1 week ago at noon')
+      ensure
+        Chronic.time_class = old_time_class
+        ::Time.zone = old_time_zone
+      end
+    end
+  end
+
+  def test_parse_relative_on_winter_time_to_dst_change_in_future
+    time_zone = ActiveSupport::TimeZone['America/Chicago']
+    travel_to time_zone.parse('2020-03-06 10:00:00') do
+      old_time_class = Chronic.time_class
+      old_time_zone = ::Time.zone
+      begin
+        ::Time.zone = 'America/Chicago'
+        Chronic.time_class = ::Time.zone
+        assert_equal Time.new(2020, 3, 8, 17, 0, 0, '-05:00'), Chronic.parse('2 days from now at 17:00')
+        assert_equal Time.new(2020, 3, 8, 10, 0, 0, '-05:00'), Chronic.parse('2 days from now')
+        assert_equal Time.new(2020, 3, 13, 12, 0, 0, '-05:00'), Chronic.parse('1 week from now at noon')
+        assert_equal Time.new(2020, 4, 6, 10, 0, 0, '-05:00'), Chronic.parse('1 month from now')
+      ensure
+        Chronic.time_class = old_time_class
+        ::Time.zone = old_time_zone
+      end
+    end
+  end
+
+  def test_parse_relative_on_winter_time_to_dst_change_in_past
+    time_zone = ActiveSupport::TimeZone['America/Chicago']
+    travel_to time_zone.parse('2020-03-08 10:00:00') do
+      old_time_class = Chronic.time_class
+      old_time_zone = ::Time.zone
+      begin
+        ::Time.zone = 'America/Chicago'
+        Chronic.time_class = ::Time.zone
+        assert_equal Time.new(2020, 3, 6, 17, 0, 0, '-06:00'), Chronic.parse('2 days ago at 17:00')
+        assert_equal Time.new(2020, 3, 6, 10, 0, 0, '-06:00'), Chronic.parse('2 days ago')
+        assert_equal Time.new(2020, 3, 1, 12, 0, 0, '-06:00'), Chronic.parse('1 week ago at noon')
+        assert_equal Time.new(2020, 2, 8, 10, 0, 0, '-06:00'), Chronic.parse('1 month ago')
+      ensure
+        Chronic.time_class = old_time_class
+        ::Time.zone = old_time_zone
+      end
+    end
+  end
 end

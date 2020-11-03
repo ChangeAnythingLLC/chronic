@@ -4,6 +4,8 @@ unless defined? Chronic
 end
 
 require 'active_support/testing/time_helpers'
+require 'active_support/values/time_zone'
+require 'active_support/core_ext/time'
 require 'minitest/autorun'
 
 class TestCase < MiniTest::Test
